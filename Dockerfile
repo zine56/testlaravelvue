@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y \
     vim \
     unzip \
     git \
-    curl
+    curl \
+    supervisor
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_mysql gd
@@ -38,6 +39,9 @@ RUN chown -R www-data:www-data /var/www \
 # Install PHP dependencies
 RUN composer install
 
-# Expose port 9000 and start PHP-FPM server
+# Copy supervisord configuration
+COPY ./docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Expose port 9000 and start supervisord
 EXPOSE 9000
-CMD ["php-fpm"]
+CMD ["/usr/bin/supervisord"]
