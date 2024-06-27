@@ -1,7 +1,7 @@
-# Use an official PHP runtime as a parent image
+# Usar una imagen oficial de PHP como imagen base
 FROM php:8.2-fpm
 
-# Install system dependencies
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpng-dev \
@@ -16,32 +16,57 @@ RUN apt-get update && apt-get install -y \
     curl \
     supervisor
 
-# Install PHP extensions
+# Instalar Node.js y npm
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
+    && apt-get install -y nodejs
+
+# Instalar extensiones de PHP
 RUN docker-php-ext-install pdo pdo_mysql gd
 
-# Install Composer
+# Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
+# Establecer el directorio de trabajo
 WORKDIR /var/www
 
-# Copy the existing application directory contents
-COPY ./laravel-app .
+COPY --chown=www-data:www-data ./laravel-app .
 
-# Copy nginx snippets
+# Copiar snippets de nginx
 COPY ./docker/nginx/snippets /etc/nginx/snippets
 
-# Give web server permissions to write to storage and cache
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 775 /var/www/storage \
-    && chmod -R 775 /var/www/bootstrap/cache
+# Dar permisos al servidor web para escribir en storage y cache
+RUN chmod -R 775 /var/www/storage \
+    && chmod -R 775 /var/www/bootstrap/cache \
+    && chmod -R 775 /var/www/public
 
-# Install PHP dependencies
-RUN composer install
+# Permitir que Composer se ejecute como superusuario
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Copy supervisord configuration
+# Instalar dependencias de PHP, incluyendo laravel/ui
+RUN composer require laravel/ui
+
+# Instalar dependencias de PHP
+RUN composer update
+
+# Crear carpetas .npm y .npmrc y cambiar permisos
+RUN mkdir /var/www/.npm && chown -R www-data:www-data /var/www/.npm \
+    && touch /var/www/.npmrc && chown www-data:www-data /var/www/.npmrc
+
+# Cambiar a un usuario que tenga permisos adecuados antes de ejecutar npm install
+USER www-data
+
+# Configurar npm cache dir y instalar dependencias de Node.js
+RUN npm config set cache /var/www/.npm && npm install --legacy-peer-deps
+
+# Compilar activos
+RUN npm run prod
+
+# Volver al usuario root para las siguientes configuraciones
+USER root
+
+# Copiar la configuración de supervisord
 COPY ./docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose port 9000 and start supervisord
+# Exponer el puerto 9000 y arrancar supervisord
 EXPOSE 9000
 CMD ["/usr/bin/supervisord"]
