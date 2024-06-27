@@ -10,7 +10,13 @@ class UserDataController extends Controller
     {
         $request->validate([
             'date' => 'required|date',
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|min:0',
+        ], [
+            'date.required' => 'La fecha es obligatoria.',
+            'date.date' => 'La fecha no es válida.',
+            'amount.required' => 'El monto es obligatorio.',
+            'amount.numeric' => 'El monto debe ser un número.',
+            'amount.min' => 'El monto no puede ser negativo.',
         ]);
 
         $data = new UserData();

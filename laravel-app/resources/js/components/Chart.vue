@@ -6,6 +6,8 @@
   import * as am5 from "@amcharts/amcharts5";
   import * as am5xy from "@amcharts/amcharts5/xy";
   import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
+  import am5locales_es_ES from "@amcharts/amcharts5/locales/es_ES";
+
   import axios from 'axios';
   
   export default {
@@ -25,7 +27,8 @@
       createChart() {
         // Create root element
         let root = am5.Root.new("chartdiv");
-  
+        root.locale = am5locales_es_ES;
+
         // Set themes
         root.setThemes([am5themes_Animated.new(root)]);
   
@@ -64,7 +67,17 @@
             renderer: am5xy.AxisRendererY.new(root, {})
           })
         );
-        yAxis.baseValue = -1000;
+
+        yAxis.children.push(
+            am5.Label.new(root, {
+            text: "$ Monto",
+            rotation: -90,
+            y: am5.percent(50),
+            centerX: am5.percent(50),
+            centerY: am5.percent(50),
+            fontWeight: "bold"
+            })
+        );
 
         // Add series
         let series = chart.series.push(
@@ -76,9 +89,14 @@
             valueXField: "date"
           })
         );
+        series.fill = am5.color('#00AEEF'),
         series.fillOpacity = 0.5;
         series.strokeWidth = 2;
         series.strokes.template.set("templateField", "strokeSettings");
+        series.fills.template.setAll({
+            visible: true,
+            fillOpacity: 0.4
+        });
   
         let tooltip = series.set("tooltip", am5.Tooltip.new(root, {
           labelText: "{valueY}"
@@ -133,6 +151,11 @@
           })
         );
         
+        sbSeries.fills.template.setAll({
+            visible: true,
+            fillOpacity: 0.4
+        });
+
         // Fetch data from the server
         axios.get('/data')
           .then(response => {
